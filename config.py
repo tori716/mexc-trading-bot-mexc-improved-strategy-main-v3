@@ -149,6 +149,7 @@ def load_config():
         "PRICE_DISPLAY_INTERVAL_SECONDS": int,
         "API_CACHE_DURATION_SECONDS": int,
         "MAX_CONCURRENT_API_CALLS": int,
+        "MAX_MONITORING_SYMBOLS": int,
     }
 
     for var, type_func in numeric_vars.items():

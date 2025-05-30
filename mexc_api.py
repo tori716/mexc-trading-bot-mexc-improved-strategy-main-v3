@@ -36,7 +36,6 @@ class MEXCAPI:
         self.session = None # aiohttp.ClientSession
         self.market_data = {} # リアルタイム市場データを保持 (例: {"BTCUSDT": {"price": 0, "volume": 0}})
         self.ohlcv_data = {} # OHLCVデータを保持 (例: {"BTCUSDT": {"5m": [], "15m": [], "1h": []}})
-        # account_info変数を削除（未使用のため）
 
     async def _create_session(self):
         """
@@ -311,19 +310,6 @@ class MEXCAPI:
             return parsed_klines
         return []
 
-    async def start_rest_api_only_mode(self, symbols: list):
-        """
-        REST APIのみで市場データをポーリングします。
-        """
-        self.logger.warning("REST APIのみで運用します")
-        self.notifier.send_discord_message("情報: REST APIのみで運用します")
-        
-        # 渡された全銘柄を使用（制限を削除）
-        active_symbols = symbols
-        self.logger.info(f"REST APIモード: 監視銘柄数 {len(active_symbols)}個: {active_symbols}")
-        
-        while True:
-            try:
     async def start_rest_api_only_mode(self, symbols: list):
         """
         REST APIのみで市場データをポーリングします。
