@@ -128,9 +128,10 @@ class TradingStrategy:
             self.logger.error("API権限確認に失敗。Botを終了します")
             return
         
-        # 監視銘柄を制限
-        self.current_symbols = (await self._select_active_symbols())[:self.config["MAX_MONITORING_SYMBOLS"]]  # configから最大数を取得
-        self.logger.info(f"制限された監視銘柄: {self.current_symbols}")
+        # 監視銘柄を選択（最大25個）
+        self.current_symbols = await self._select_active_symbols()
+        self.logger.info(f"選択された監視銘柄: {len(self.current_symbols)}個")
+        self.logger.info(f"監視銘柄リスト: {self.current_symbols}")
         
         # REST APIのみで市場データをポーリング
         asyncio.create_task(self.mexc_api.start_rest_api_only_mode(self.current_symbols))

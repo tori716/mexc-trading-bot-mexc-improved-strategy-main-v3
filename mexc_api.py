@@ -315,58 +315,97 @@ class MEXCAPI:
         """
         REST APIのみで市場データをポーリングします。
         """
-        self.logger.warning("REST APIのみで運用します") # WebSocketが使用できないという文言は削除
+        self.logger.warning("REST APIのみで運用します")
         self.notifier.send_discord_message("情報: REST APIのみで運用します")
         
-        # 監視銘柄を大幅に削減（API制限対応）
-        limited_symbols = symbols[:4]  # 4銘柄まで制限
-        self.logger.info(f"REST APIモード: 監視銘柄を{len(limited_symbols)}個に制限: {limited_symbols}")
+        # 渡された全銘柄を使用（制限を削除）
+        active_symbols = symbols
+        self.logger.info(f"REST APIモード: 監視銘柄数 {len(active_symbols)}個: {active_symbols}")
         
         while True:
             try:
-                for symbol in limited_symbols:
-                    try:
-                        # 価格データ取得
-                        ticker = await self.get_ticker_price(symbol)
-                        if ticker and ticker.get("price"):
-                            self.market_data[symbol] = {
-                                "price": float(ticker["price"]),
-                                "volume_24h": 0, # REST APIのticker/priceには24h volumeがないため0
-                                "timestamp": time.time()
-                            }
-                            self.logger.debug(f"REST API価格更新: {symbol} = {ticker['price']}")
-                        
-                        # OHLCVデータ取得
-                        for interval in ["Min5", "Min15", "Min60"]:
-                            klines = await self.get_klines(symbol, interval, 50)
-                            if klines:
-                                if symbol not in self.ohlcv_data:
-                                    self.ohlcv_data[symbol] = {}
-                                
-                                self.ohlcv_data[symbol][interval] = []
-                                for kline in klines:
-                                    self.ohlcv_data[symbol][interval].append({
-                                        "open": float(kline[1]),
-                                        "high": float(kline[2]),
-                                        "low": float(kline[3]),
-                                        "close": float(kline[4]),
-                                        "volume": float(kline[5]),
-                                        "timestamp": int(kline[0])
-                                    })
-                        
-                        # API制限対応の待機
-                        await asyncio.sleep(5)  # 銘柄間で5秒待機 (100回/秒制限を考慮)
-                        
-                    except Exception as e:
-                        self.logger.error(f"REST API データ取得エラー ({symbol}): {e}")
+    async def start_rest_api_only_mode(self, symbols: list):
+        """
+        REST APIのみで市場データをポーリングします。
+        25銘柄対応の効率的な実装。
+        """
+        self.logger.warning("REST APIのみで運用します")
+        self.notifier.send_discord_message("情報: REST APIのみで運用します")
+        
+        active_symbols = symbols
+        self.logger.info(f"REST APIモード: 監視銘柄数 {len(active_symbols)}個")
+        self.logger.info(f"監視銘柄: {active_symbols}")
+        
+        while True:
+            try:
+                # 並行処理でAPI効率を向上
+                tasks = []
+                
+                # 価格データとOHLCVデータを並行取得
+                for symbol in active_symbols:
+                    # 価格データ取得タスク
+                    tasks.append(self._fetch_symbol_price(symbol))
+                    
+                    # OHLCVデータ取得タスク（各時間足）
+                    for interval in ["Min5", "Min15", "Min60"]:
+                        tasks.append(self._fetch_symbol_ohlcv(symbol, interval))
+                
+                # 全タスクを並行実行（API制限に配慮して分割実行）
+                batch_size = 10  # 一度に10個のAPIコールまで
+                for i in range(0, len(tasks), batch_size):
+                    batch = tasks[i:i + batch_size]
+                    await asyncio.gather(*batch, return_exceptions=True)
+                    
+                    # API制限対応の待機（短縮）
+                    await asyncio.sleep(2)  # バッチ間で2秒待機
                 
                 # 次回更新まで待機
-                self.logger.info(f"取得データ: {len(self.market_data)}銘柄")
-                await asyncio.sleep(10)  # 10秒間隔で更新
+                self.logger.info(f"取得データ: {len(self.market_data)}銘柄の価格データと{len(self.ohlcv_data)}銘柄のOHLCVデータ")
+                await asyncio.sleep(15)  # 15秒間隔で更新（API制限を考慮）
                 
             except Exception as e:
                 self.logger.error(f"REST APIモード中のエラー: {e}")
-                await asyncio.sleep(120)
+                await asyncio.sleep(60)  # エラー時は1分待機
+
+    async def _fetch_symbol_price(self, symbol: str):
+        """
+        指定銘柄の価格データを取得します。
+        """
+        try:
+            ticker = await self.get_ticker_price(symbol)
+            if ticker and ticker.get("price"):
+                self.market_data[symbol] = {
+                    "price": float(ticker["price"]),
+                    "volume_24h": 0,
+                    "timestamp": time.time()
+                }
+                self.logger.debug(f"価格更新: {symbol} = {ticker['price']}")
+        except Exception as e:
+            self.logger.error(f"価格データ取得エラー ({symbol}): {e}")
+
+    async def _fetch_symbol_ohlcv(self, symbol: str, interval: str):
+        """
+        指定銘柄のOHLCVデータを取得します。
+        """
+        try:
+            klines = await self.get_klines(symbol, interval, 50)
+            if klines:
+                if symbol not in self.ohlcv_data:
+                    self.ohlcv_data[symbol] = {}
+                
+                self.ohlcv_data[symbol][interval] = []
+                for kline in klines:
+                    self.ohlcv_data[symbol][interval].append({
+                        "open": float(kline[1]),
+                        "high": float(kline[2]),
+                        "low": float(kline[3]),
+                        "close": float(kline[4]),
+                        "volume": float(kline[5]),
+                        "timestamp": int(kline[0])
+                    })
+                self.logger.debug(f"OHLCV更新: {symbol} {interval}")
+        except Exception as e:
+            self.logger.error(f"OHLCV取得エラー ({symbol}, {interval}): {e}")
 
     async def verify_api_permissions(self):
         """

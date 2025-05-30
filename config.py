@@ -31,7 +31,7 @@ def load_config():
         "TARGET_SYMBOLS_TIER1": ["AVAX", "LINK", "NEAR", "FTM", "ATOM", "DOT", "MATIC", "UNI", "AAVE", "DOGE"],
         "TARGET_SYMBOLS_TIER2": ["ADA", "ALGO", "APE", "ARB", "EGLD", "FIL", "GRT", "ICP", "LTC", "SAND"],
         "TARGET_SYMBOLS_TIER3": ["SHIB", "VET", "MANA", "GALA", "ONE"],
-        "MAX_MONITORING_SYMBOLS": 25,
+        "MAX_MONITORING_SYMBOLS": int(os.getenv("MAX_MONITORING_SYMBOLS", "25")),  # 環境変数から取得
         "MARKET_CONDITION_ROTATION": True,  # 市場環境に応じたローテーション有効化
         "POSITION_SIZE_PERCENTAGE": float(os.getenv("POSITION_SIZE_PERCENTAGE", "5.0")), # 1取引あたりのリスク許容額: 総資金の最大5%
         "MAX_SIMULTANEOUS_POSITIONS": int(os.getenv("MAX_SIMULTANEOUS_POSITIONS", "2")), # 同時保有ポジション上限: 最大2つまで
