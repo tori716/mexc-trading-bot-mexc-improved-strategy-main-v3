@@ -34,8 +34,8 @@ def load_config():
         "MAX_MONITORING_SYMBOLS": 25,
         "MARKET_CONDITION_ROTATION": True,  # 市場環境に応じたローテーション有効化
         "POSITION_SIZE_PERCENTAGE": float(os.getenv("POSITION_SIZE_PERCENTAGE", "5.0")), # 1取引あたりのリスク許容額: 総資金の最大5%
-        "MAX_SIMULTANEOUS_POSITIONS": int(os.getenv("MAX_SIMULTANEOUS_POSITIONS", "2")),
-        "MAX_CONSECUTIVE_ENTRIES_SAME_COIN": int(os.getenv("MAX_CONSECUTIVE_ENTRIES_SAME_COIN", "2")),
+        "MAX_SIMULTANEOUS_POSITIONS": int(os.getenv("MAX_SIMULTANEOUS_POSITIONS", "2")), # 同時保有ポジション上限: 最大2つまで
+        "MAX_CONSECUTIVE_ENTRIES_SAME_COIN": int(os.getenv("MAX_CONSECUTIVE_ENTRIES_SAME_COIN", "2")), # 同一銘柄への連続エントリー制限: 24時間以内に最大2回まで
 
         # 戦略パラメータ
         "BB_PERIOD": int(os.getenv("BB_PERIOD", "20")),
@@ -96,8 +96,8 @@ def load_config():
 
         # 最適取引時間帯 (JST)
         "OPTIMIZED_TRADING_HOURS": [
-            {"start": 15, "end": 18},
-            {"start": 22, "end": 24}
+            {"start": 15, "end": 18}, # 15:00-18:00 JST
+            {"start": 22, "end": 24}  # 22:00-24:00 JST
         ]
     }
 

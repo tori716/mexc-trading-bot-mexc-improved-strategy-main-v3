@@ -34,7 +34,7 @@ class MEXCAPI:
         self.notifier = notifier
         self.logger = logging.getLogger(__name__)
         self.session = None # aiohttp.ClientSession
-        self.market_data = {} # リアルタイム市場データを保持 (例: {"BTCUSDT": {"price": 0, "volume": 0})
+        self.market_data = {} # リアルタイム市場データを保持 (例: {"BTCUSDT": {"price": 0, "volume": 0}})
         self.ohlcv_data = {} # OHLCVデータを保持 (例: {"BTCUSDT": {"5m": [], "15m": [], "1h": []}})
         # account_info変数を削除（未使用のため）
 
@@ -331,7 +331,7 @@ class MEXCAPI:
                         if ticker and ticker.get("price"):
                             self.market_data[symbol] = {
                                 "price": float(ticker["price"]),
-                                "volume_24h": 0,
+                                "volume_24h": 0, # REST APIのticker/priceには24h volumeがないため0
                                 "timestamp": time.time()
                             }
                             self.logger.debug(f"REST API価格更新: {symbol} = {ticker['price']}")

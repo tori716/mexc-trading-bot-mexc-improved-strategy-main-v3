@@ -31,7 +31,7 @@ SYMBOL_ROTATION_CHECK_INTERVAL = 300  # 銘柄ローテーションチェック�
 # 時間足マッピング
 TIMEFRAME_MAPPING = {
     "Min5": "5m",
-    "Min15": "15m",
+    "Min15": "15m", 
     "Min60": "60m",
     "1h": "60m"
 }
