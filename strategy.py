@@ -260,6 +260,21 @@ class TradingStrategy:
         
         return base_size
     
+    def _is_optimized_trading_hours(self) -> bool:
+        """
+        現在時刻が最適化された取引時間帯内にあるかをチェックします。
+        
+        Returns:
+            bool: 最適化された取引時間帯内の場合True
+        """
+        current_hour_jst = datetime.now().hour
+        
+        for period in self.config["OPTIMIZED_TRADING_HOURS"]:
+            if period["start"] <= current_hour_jst < period["end"]:
+                return True
+        
+        return False
+    
     def _calculate_current_portfolio_risk(self) -> float:
         """
         現在のポートフォリオリスク使用率を計算します。
