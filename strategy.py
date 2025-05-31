@@ -217,6 +217,24 @@ class TradingStrategy:
         """
         return self.coin_specific_params.get(coin, {}).get(param_name, default_value)
     
+    def _is_optimized_trading_hours(self) -> bool:
+        """
+        現在時刻が最適化された取引時間帯内にあるかをチェックします。
+        
+        Returns:
+            bool: 最適化された取引時間帯内の場合True
+        """
+        from datetime import datetime
+        current_hour_jst = datetime.now().hour
+        
+        # 最適化された取引時間帯のチェック（JST）
+        # 15:00-18:00 JST (昼間の時間帯)
+        # 22:00-24:00 JST (夜間の時間帯)
+        for period in self.config["OPTIMIZED_TRADING_HOURS"]:
+            if period["start"] <= current_hour_jst < period["end"]:
+                return True
+        return False
+    
     def _calculate_dynamic_position_size(self, symbol: str, side: str) -> float:
         """
         改善された動的ポジションサイジングを計算します。
