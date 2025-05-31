@@ -157,3 +157,45 @@ API_CACHE_DURATION_SECONDS="5"
 
 # 最大同時API呼び出し数
 MAX_CONCURRENT_API_CALLS="3"
+
+# ==============================================
+# 新しいリスク管理設定（改善版）
+# ==============================================
+# 最小保有時間（分）- この時間未満はポジションを決済しない
+MINIMUM_HOLDING_TIME_MINUTES="5"
+
+# 最小取引サイズ（USD）- この金額未満の取引は実行しない
+MINIMUM_TRADE_SIZE_USD="10.0"
+
+# 最小損失額（USD）- この金額未満の損失は連続損失としてカウントしない
+MINIMUM_LOSS_AMOUNT_USD="0.50"
+
+# 連続損失による取引停止の閾値
+CONSECUTIVE_LOSS_THRESHOLD="3"
+
+# ==============================================
+# 改善された資金管理設定（Ultra-Think実装）
+# ==============================================
+# 動的ポジションサイジングの有効化
+DYNAMIC_POSITION_SIZING_ENABLED="True"
+
+# 時間帯別ポジションサイジングの有効化
+TIME_BASED_POSITION_SIZING="True"
+
+# 最適時間帯のポジションサイズ（%）
+OPTIMIZED_HOURS_POSITION_SIZE="6.0"
+
+# 非最適時間帯のポジションサイズ（%）
+NON_OPTIMIZED_HOURS_POSITION_SIZE="4.0"
+
+# ピラミッディング機能の有効化
+PYRAMIDING_ENABLED="True"
+
+# ピラミッディング発動の利益閾値（%）
+PYRAMIDING_THRESHOLD_PERCENTAGE="2.0"
+
+# ピラミッディング追加ポジションサイズ（%）
+PYRAMIDING_SIZE_PERCENTAGE="3.0"
+
+# 最大ポートフォリオリスク（%）
+MAX_PORTFOLIO_RISK_PERCENTAGE="25.0"

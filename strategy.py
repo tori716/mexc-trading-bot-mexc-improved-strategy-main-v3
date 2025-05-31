@@ -37,6 +37,11 @@ class TradingStrategy:
         
         # 銘柄別損失履歴の追跡
         self.symbol_loss_history = {} # {symbol: [{"time": datetime, "type": "loss"}, ...]}
+        
+        # 改善された資金管理のための変数
+        self.winning_streak = 0  # 連続勝利回数
+        self.daily_profit_percentage = 0.0  # 日次利益率
+        self.portfolio_risk_usage = 0.0  # 現在のポートフォリオリスク使用率
 
     def _initialize_coin_specific_params(self):
         """
@@ -166,6 +171,152 @@ class TradingStrategy:
         銘柄別の調整パラメータを取得します。存在しない場合はデフォルト値を返します。
         """
         return self.coin_specific_params.get(coin, {}).get(param_name, default_value)
+    
+    def _calculate_dynamic_position_size(self, symbol: str, side: str) -> float:
+        """
+        改善された動的ポジションサイジングを計算します。
+        
+        Args:
+            symbol (str): 取引銘柄
+            side (str): 取引方向 (BUY/SELL)
+            
+        Returns:
+            float: 調整されたポジションサイズ（%）
+        """
+        base_size = self.config["POSITION_SIZE_PERCENTAGE"]
+        
+        # 1. 時間帯ベース調整
+        if self.config["TIME_BASED_POSITION_SIZING"]:
+            if self._is_optimized_trading_hours():
+                base_size = self.config["OPTIMIZED_HOURS_POSITION_SIZE"]
+            else:
+                base_size = self.config["NON_OPTIMIZED_HOURS_POSITION_SIZE"]
+        
+        # 2. 勝率ベース調整
+        if self.winning_streak >= 3:
+            base_size *= 1.2  # 連続勝利時は20%増加
+        elif self.winning_streak >= 2:
+            base_size *= 1.1  # 2連勝時は10%増加
+        
+        # 3. 日次パフォーマンスベース調整
+        if self.daily_profit_percentage > 5.0:
+            base_size *= 1.15  # 好調な日は15%増加
+        elif self.daily_profit_percentage < -3.0:
+            base_size *= 0.8   # 不調な日は20%減少
+        
+        # 4. 連続損失による調整（既存ロジック）
+        if self.consecutive_losses == 2:
+            base_size /= 2  # 2連敗時は半減
+        elif self.consecutive_losses >= 3:
+            base_size = 0   # 3連敗時は停止
+        
+        # 5. 上限・下限の設定
+        base_size = max(2.0, min(10.0, base_size))  # 2-10%の範囲
+        
+        return base_size
+    
+    def _calculate_current_portfolio_risk(self) -> float:
+        """
+        現在のポートフォリオリスク使用率を計算します。
+        
+        Returns:
+            float: 現在のリスク使用率（%）
+        """
+        total_risk = 0.0
+        
+        for symbol, position in self.current_positions.items():
+            # 各ポジションの現在価値を計算
+            position_value = position["quantity"] * position["entry_price"]
+            risk_percentage = (position_value / self.current_capital) * 100
+            total_risk += risk_percentage
+        
+        return total_risk
+    
+    async def _check_pyramiding_opportunity(self, symbol: str, current_price: float):
+        """
+        ピラミッディング（利益追加）の機会をチェックします。
+        
+        Args:
+            symbol (str): 銘柄シンボル
+            current_price (float): 現在価格
+        """
+        if not self.config["PYRAMIDING_ENABLED"]:
+            return
+            
+        if symbol not in self.current_positions:
+            return
+            
+        position = self.current_positions[symbol]
+        side = position["side"]
+        entry_price = position["entry_price"]
+        
+        # 利益率を計算
+        if side == "BUY":
+            profit_percentage = ((current_price - entry_price) / entry_price) * 100
+        else: # SELL
+            profit_percentage = ((entry_price - current_price) / entry_price) * 100
+        
+        # ピラミッディング条件チェック
+        if (profit_percentage >= self.config["PYRAMIDING_THRESHOLD_PERCENTAGE"] and 
+            not position.get("pyramided", False)):  # まだピラミッディングしていない
+            
+            # ポートフォリオリスク制限チェック
+            pyramid_size = self.config["PYRAMIDING_SIZE_PERCENTAGE"]
+            trade_amount_usd = self.current_capital * (pyramid_size / 100)
+            
+            current_portfolio_risk = self._calculate_current_portfolio_risk()
+            new_position_risk = trade_amount_usd / self.current_capital * 100
+            
+            if current_portfolio_risk + new_position_risk <= self.config["MAX_PORTFOLIO_RISK_PERCENTAGE"]:
+                await self._execute_pyramiding(symbol, side, current_price, trade_amount_usd)
+    
+    async def _execute_pyramiding(self, symbol: str, side: str, current_price: float, trade_amount_usd: float):
+        """
+        ピラミッディング取引を実行します。
+        
+        Args:
+            symbol (str): 銘柄シンボル
+            side (str): 取引方向
+            current_price (float): 現在価格
+            trade_amount_usd (float): 追加取引金額
+        """
+        quantity = trade_amount_usd / current_price
+        
+        # 追加注文を実行
+        order_response = await self.mexc_api.place_order(
+            symbol=symbol,
+            side=side,
+            order_type="MARKET",
+            quantity=quantity
+        )
+        
+        if order_response and order_response.get("status") == "FILLED":
+            # 既存ポジションを更新（平均価格計算）
+            existing_position = self.current_positions[symbol]
+            existing_quantity = existing_position["quantity"]
+            existing_value = existing_quantity * existing_position["entry_price"]
+            new_value = quantity * current_price
+            
+            total_quantity = existing_quantity + quantity
+            average_price = (existing_value + new_value) / total_quantity
+            
+            # ポジション更新
+            self.current_positions[symbol]["quantity"] = total_quantity
+            self.current_positions[symbol]["entry_price"] = average_price
+            self.current_positions[symbol]["pyramided"] = True
+            
+            self.logger.info(f"ピラミッディング実行: {symbol} {side} +{quantity:.4f} @ {current_price:.4f} (新平均価格: {average_price:.4f})")
+            self.notifier.send_discord_message(f"ピラミッディング実行: {symbol} {side} +{quantity:.4f} @ {current_price:.4f}")
+            
+            # 資金更新（テストモードの場合）
+            if self.config["TEST_MODE"]:
+                # 手数料考慮
+                FEE_RATE = 0.001
+                transaction_fee = quantity * current_price * FEE_RATE
+                self.current_capital -= transaction_fee
+        else:
+            self.logger.error(f"ピラミッディング注文失敗: {symbol} {side}")
+            self.notifier.send_discord_message(f"ピラミッディング注文失敗: {symbol} {side}")
 
     async def start_paper_trading(self):
         """
@@ -263,6 +414,9 @@ class TradingStrategy:
                 positions_to_remove.append(symbol)
                 continue
             
+            # ピラミッディング機会のチェック
+            await self._check_pyramiding_opportunity(symbol, current_price)
+            
             # 固定損切り、時間経過損切り、テクニカル指標ベース損切りのチェック
             if await self._check_stop_loss(symbol, position, current_price):
                 positions_to_remove.append(symbol)
@@ -276,9 +430,9 @@ class TradingStrategy:
         # 連続損失時のポジションサイズ自動縮小/取引停止のロジックは、
         # _execute_trade_and_update_capital で処理されるため、ここでは不要。
         # ただし、その日の取引停止状態のチェックはここでも行うべき。
-        if self.consecutive_losses >= 3:
-            self.logger.warning("3回連続損失が発生したため、本日の取引を停止します。")
-            self.notifier.send_discord_message("警告: 3回連続損失が発生したため、本日の取引を停止します。")
+        if self.consecutive_losses >= self.config["CONSECUTIVE_LOSS_THRESHOLD"]:
+            self.logger.warning(f"{self.config['CONSECUTIVE_LOSS_THRESHOLD']}回連続で実質的な損失が発生したため、本日の取引を停止します。")
+            self.notifier.send_discord_message(f"警告: {self.config['CONSECUTIVE_LOSS_THRESHOLD']}回連続で実質的な損失が発生したため、本日の取引を停止します。")
             # 翌日まで待機するロジック（例: 日付が変わるまでsleep）
             await self._wait_until_next_day()
             self.consecutive_losses = 0 # 日付が変わったらリセット
@@ -671,7 +825,27 @@ class TradingStrategy:
             self.notifier.send_discord_message("警告: 3回連続損失のため、本日の取引は停止されています。")
             return
 
+        # 改善された動的ポジションサイジング
+        if self.config["DYNAMIC_POSITION_SIZING_ENABLED"]:
+            position_size_percentage = self._calculate_dynamic_position_size(symbol, side)
+        
         trade_amount_usd = self.current_capital * (position_size_percentage / 100)
+        
+        # ポートフォリオリスク制限チェック
+        current_portfolio_risk = self._calculate_current_portfolio_risk()
+        new_position_risk = trade_amount_usd / self.current_capital * 100
+        
+        if current_portfolio_risk + new_position_risk > self.config["MAX_PORTFOLIO_RISK_PERCENTAGE"]:
+            self.logger.warning(f"{symbol} ポートフォリオリスク超過 (現在: {current_portfolio_risk:.1f}% + 新規: {new_position_risk:.1f}% > 上限: {self.config['MAX_PORTFOLIO_RISK_PERCENTAGE']:.1f}%)")
+            self.notifier.send_discord_message(f"{symbol} ポートフォリオリスク上限によりエントリーを回避しました。")
+            return
+        
+        # 最小取引サイズチェック
+        if trade_amount_usd < self.config["MINIMUM_TRADE_SIZE_USD"]:
+            self.logger.warning(f"{symbol} 取引金額${trade_amount_usd:.2f}が最小取引サイズ${self.config['MINIMUM_TRADE_SIZE_USD']}を下回るため、エントリーを回避します。")
+            self.notifier.send_discord_message(f"{symbol} 取引金額が最小サイズを下回るため、エントリーを回避しました。")
+            return
+        
         quantity = trade_amount_usd / entry_price # 数量を計算
 
         # 注文執行の最適化: 指値注文の価格設定を市場流動性に応じて動的に調整
@@ -853,34 +1027,86 @@ class TradingStrategy:
         # 手数料を考慮した実質損失率
         adjusted_loss_percentage = loss_percentage + (2 * FEE_RATE * 100) # 損失なので手数料分は加算
 
-        # 段階的損切りチェック
+        # 段階的損切りチェック（改善版）
         if self.config["PROGRESSIVE_STOP_LOSS_ENABLED"]:
             time_in_position = (datetime.now() - position["entry_time"]).total_seconds() / 60
-            for stage in self.config["PROGRESSIVE_STOP_LOSS_STAGES"]:
-                if (time_in_position >= stage["time_minutes"] and 
-                    adjusted_loss_percentage >= stage["loss_percentage"]):
-                    self.logger.info(f"{symbol} 段階的損切りシグナル発生 (時間: {time_in_position:.0f}分, 損失率: {adjusted_loss_percentage:.2f}%)")
-                    self.notifier.send_discord_message(f"{symbol} 段階的損切りシグナル発生 (時間: {time_in_position:.0f}分, 損失率: {adjusted_loss_percentage:.2f}%)")
-                    await self._close_position(symbol, position, current_price, "PROGRESSIVE_STOP_LOSS")
+            
+            # 最小保有時間チェック
+            if time_in_position < self.config["MINIMUM_HOLDING_TIME_MINUTES"]:
+                return False
+            
+            # 実際の損失額計算
+            if side == "BUY":
+                actual_loss_amount = position["quantity"] * (entry_price - current_price)
+            else:
+                actual_loss_amount = position["quantity"] * (current_price - entry_price)
+            
+            # 手数料を考慮
+            FEE_RATE = 0.001
+            transaction_fee = position["quantity"] * current_price * FEE_RATE
+            actual_loss_amount += transaction_fee
+            
+            # 最小損失額以上かつ段階的条件を満たす場合のみ損切り
+            if actual_loss_amount >= self.config["MINIMUM_LOSS_AMOUNT_USD"]:
+                for stage in self.config["PROGRESSIVE_STOP_LOSS_STAGES"]:
+                    if (time_in_position >= stage["time_minutes"] and 
+                        adjusted_loss_percentage >= stage["loss_percentage"]):
+                        self.logger.info(f"{symbol} 段階的損切りシグナル発生 (時間: {time_in_position:.0f}分, 損失率: {adjusted_loss_percentage:.2f}%, 損失額: ${actual_loss_amount:.2f})")
+                        self.notifier.send_discord_message(f"{symbol} 段階的損切りシグナル発生 (時間: {time_in_position:.0f}分, 損失率: {adjusted_loss_percentage:.2f}%, 損失額: ${actual_loss_amount:.2f})")
+                        await self._close_position(symbol, position, current_price, "PROGRESSIVE_STOP_LOSS")
+                        # 実際の損失額ベースで連続損失をカウント
+                        if actual_loss_amount >= self.config["MINIMUM_LOSS_AMOUNT_USD"]:
+                            self.consecutive_losses += 1
+                        return True
+        else:
+            # 固定損切り（改善版）
+            time_in_position = (datetime.now() - position["entry_time"]).total_seconds() / 60
+            if time_in_position >= self.config["MINIMUM_HOLDING_TIME_MINUTES"]:
+                # 実際の損失額計算
+                if side == "BUY":
+                    actual_loss_amount = position["quantity"] * (entry_price - current_price)
+                else:
+                    actual_loss_amount = position["quantity"] * (current_price - entry_price)
+                
+                # 手数料を考慮
+                FEE_RATE = 0.001
+                transaction_fee = position["quantity"] * current_price * FEE_RATE
+                actual_loss_amount += transaction_fee
+                
+                if (adjusted_loss_percentage >= self.config["FIXED_STOP_LOSS_PERCENTAGE"] and 
+                    actual_loss_amount >= self.config["MINIMUM_LOSS_AMOUNT_USD"]):
+                    self.logger.info(f"{symbol} 固定損切りシグナル発生 (損失率: {adjusted_loss_percentage:.2f}%, 損失額: ${actual_loss_amount:.2f})")
+                    self.notifier.send_discord_message(f"{symbol} 固定損切りシグナル発生 (損失率: {adjusted_loss_percentage:.2f}%, 損失額: ${actual_loss_amount:.2f})")
+                    await self._close_position(symbol, position, current_price, "FIXED_STOP_LOSS")
                     self.consecutive_losses += 1
                     return True
-        else:
-            # 固定損切り
-            if adjusted_loss_percentage >= self.config["FIXED_STOP_LOSS_PERCENTAGE"]:
-                self.logger.info(f"{symbol} 固定損切りシグナル発生 (損失率: {adjusted_loss_percentage:.2f}%)")
-                self.notifier.send_discord_message(f"{symbol} 固定損切りシグナル発生 (損失率: {adjusted_loss_percentage:.2f}%)")
-                await self._close_position(symbol, position, current_price, "FIXED_STOP_LOSS")
-                self.consecutive_losses += 1 # 損失発生
-                return True
 
-        # 時間経過損切り
+        # 時間経過損切り（改善版）
         time_in_position = (datetime.now() - position["entry_time"]).total_seconds() / 60 # 分
-        if time_in_position >= self.config["TIME_BASED_STOP_LOSS_MINUTES"] and \
-           adjusted_loss_percentage >= -self.config["TIME_BASED_STOP_LOSS_PROFIT_THRESHOLD"]:
-            self.logger.info(f"{symbol} 時間経過損切りシグナル発生 (保有時間: {time_in_position:.0f}分, 利益率: {adjusted_loss_percentage:.2f}%)")
-            self.notifier.send_discord_message(f"{symbol} 時間経過損切りシグナル発生 (保有時間: {time_in_position:.0f}分, 利益率: {adjusted_loss_percentage:.2f}%)")
-            await self._close_position(symbol, position, current_price, "TIME_BASED_STOP_LOSS")
-            self.consecutive_losses += 1 # 損失発生
+        if (time_in_position >= self.config["TIME_BASED_STOP_LOSS_MINUTES"] and 
+            time_in_position >= self.config["MINIMUM_HOLDING_TIME_MINUTES"] and
+            adjusted_loss_percentage >= -self.config["TIME_BASED_STOP_LOSS_PROFIT_THRESHOLD"]):
+            
+            # 実際の損失額計算
+            if side == "BUY":
+                actual_loss_amount = position["quantity"] * (entry_price - current_price)
+            else:
+                actual_loss_amount = position["quantity"] * (current_price - entry_price)
+            
+            # 手数料を考慮
+            FEE_RATE = 0.001
+            transaction_fee = position["quantity"] * current_price * FEE_RATE
+            actual_loss_amount += transaction_fee
+            
+            if actual_loss_amount >= self.config["MINIMUM_LOSS_AMOUNT_USD"]:
+                self.logger.info(f"{symbol} 時間経過損切りシグナル発生 (保有時間: {time_in_position:.0f}分, 利益率: {adjusted_loss_percentage:.2f}%, 損失額: ${actual_loss_amount:.2f})")
+                self.notifier.send_discord_message(f"{symbol} 時間経過損切りシグナル発生 (保有時間: {time_in_position:.0f}分, 利益率: {adjusted_loss_percentage:.2f}%, 損失額: ${actual_loss_amount:.2f})")
+                await self._close_position(symbol, position, current_price, "TIME_BASED_STOP_LOSS")
+                self.consecutive_losses += 1
+            else:
+                # 微少損失の場合は連続損失としてカウントしない
+                self.logger.info(f"{symbol} 時間経過決済 (微少損失のため連続損失カウントなし: ${actual_loss_amount:.2f})")
+                await self._close_position(symbol, position, current_price, "TIME_BASED_STOP_LOSS")
             return True
 
         # テクニカル指標ベース損切り
@@ -905,11 +1131,28 @@ class TradingStrategy:
                     macd_cross_signal = True
                 
                 if macd_cross_signal:
-                    self.logger.info(f"{symbol} テクニカル損切りシグナル発生 (MACD逆転)")
-                    self.notifier.send_discord_message(f"{symbol} テクニカル損切りシグナル発生 (MACD逆転)")
-                    await self._close_position(symbol, position, current_price, "MACD_STOP_LOSS")
-                    self.consecutive_losses += 1 # 損失発生
-                    return True
+                    # 最小保有時間チェック
+                    time_in_position = (datetime.now() - position["entry_time"]).total_seconds() / 60
+                    if time_in_position >= self.config["MINIMUM_HOLDING_TIME_MINUTES"]:
+                        # 実際の損失額計算
+                        if side == "BUY":
+                            actual_loss_amount = position["quantity"] * (entry_price - current_price)
+                        else:
+                            actual_loss_amount = position["quantity"] * (current_price - entry_price)
+                        
+                        # 手数料を考慮
+                        FEE_RATE = 0.001
+                        transaction_fee = position["quantity"] * current_price * FEE_RATE
+                        actual_loss_amount += transaction_fee
+                        
+                        self.logger.info(f"{symbol} テクニカル損切りシグナル発生 (MACD逆転, 損失額: ${actual_loss_amount:.2f})")
+                        self.notifier.send_discord_message(f"{symbol} テクニカル損切りシグナル発生 (MACD逆転, 損失額: ${actual_loss_amount:.2f})")
+                        await self._close_position(symbol, position, current_price, "MACD_STOP_LOSS")
+                        
+                        # 実際の損失額ベースで連続損失をカウント
+                        if actual_loss_amount >= self.config["MINIMUM_LOSS_AMOUNT_USD"]:
+                            self.consecutive_losses += 1
+                        return True
 
             # 改善された5分足ボリンジャーバンドのミドルライン損切り
             bb_period = self.get_adjusted_param(symbol, "BB_PERIOD", self.config["BB_PERIOD"])
@@ -941,11 +1184,28 @@ class TradingStrategy:
                         bb_mid_break_signal = True
                 
                 if bb_mid_break_signal:
-                    self.logger.info(f"{symbol} 改善されたテクニカル損切りシグナル発生 (BBミドルラインブレイク: {price_deviation:.2f}%)")
-                    self.notifier.send_discord_message(f"{symbol} 改善されたテクニカル損切りシグナル発生 (BBミドルラインブレイク: {price_deviation:.2f}%)")
-                    await self._close_position(symbol, position, current_price, "BB_MID_STOP_LOSS")
-                    self.consecutive_losses += 1 # 損失発生
-                    return True
+                    # 最小保有時間チェック
+                    time_in_position = (datetime.now() - position["entry_time"]).total_seconds() / 60
+                    if time_in_position >= self.config["MINIMUM_HOLDING_TIME_MINUTES"]:
+                        # 実際の損失額計算
+                        if side == "BUY":
+                            actual_loss_amount = position["quantity"] * (entry_price - current_price)
+                        else:
+                            actual_loss_amount = position["quantity"] * (current_price - entry_price)
+                        
+                        # 手数料を考慮
+                        FEE_RATE = 0.001
+                        transaction_fee = position["quantity"] * current_price * FEE_RATE
+                        actual_loss_amount += transaction_fee
+                        
+                        self.logger.info(f"{symbol} 改善されたテクニカル損切りシグナル発生 (BBミドルラインブレイク: {price_deviation:.2f}%, 損失額: ${actual_loss_amount:.2f})")
+                        self.notifier.send_discord_message(f"{symbol} 改善されたテクニカル損切りシグナル発生 (BBミドルラインブレイク: {price_deviation:.2f}%, 損失額: ${actual_loss_amount:.2f})")
+                        await self._close_position(symbol, position, current_price, "BB_MID_STOP_LOSS")
+                        
+                        # 実際の損失額ベースで連続損失をカウント
+                        if actual_loss_amount >= self.config["MINIMUM_LOSS_AMOUNT_USD"]:
+                            self.consecutive_losses += 1
+                        return True
         
         return False
 
@@ -967,9 +1227,21 @@ class TradingStrategy:
                     if position["side"] == "BUY": # ロングポジションのみ対象
                         current_price = await self.mexc_api.get_current_price(symbol)
                         if current_price != 0:
+                            # 実際の損失額計算
+                            entry_price = position["entry_price"]
+                            actual_loss_amount = position["quantity"] * (entry_price - current_price)
+                            
+                            # 手数料を考慮
+                            FEE_RATE = 0.001
+                            transaction_fee = position["quantity"] * current_price * FEE_RATE
+                            actual_loss_amount += transaction_fee
+                            
                             await self._close_position(symbol, position, current_price, "EMERGENCY_STOP_LOSS_BTC_CRASH")
                             del self.current_positions[symbol] # 決済後削除
-                            self.consecutive_losses += 1 # 損失発生
+                            
+                            # 実際の損失額ベースで連続損失をカウント
+                            if actual_loss_amount >= self.config["MINIMUM_LOSS_AMOUNT_USD"]:
+                                self.consecutive_losses += 1
                         else:
                             self.logger.error(f"緊急損切り中に{symbol}の価格が取得できませんでした。")
                             self.notifier.send_discord_message(f"エラー: 緊急損切り中に{symbol}の価格が取得できませんでした。")
@@ -1019,16 +1291,27 @@ class TradingStrategy:
                 "profit_loss_usd": profit_loss_amount if self.config["TEST_MODE"] else "N/A" # 本番モードでは実際の損益をAPIから取得する必要がある
             })
             
-            # 損失履歴の記録（改善のため）
-            if self.config["TEST_MODE"] and profit_loss_amount < 0:
-                if symbol not in self.symbol_loss_history:
-                    self.symbol_loss_history[symbol] = []
-                self.symbol_loss_history[symbol].append({
-                    "time": datetime.now(),
-                    "type": "loss",
-                    "amount": profit_loss_amount,
-                    "reason": reason
-                })
+            # 勝敗履歴の記録（改善版）
+            if self.config["TEST_MODE"]:
+                if profit_loss_amount >= 0:
+                    # 勝利の記録
+                    self.winning_streak += 1
+                    self.consecutive_losses = 0  # 連続損失をリセット
+                    self.logger.info(f"勝利記録: {symbol} 利益 ${profit_loss_amount:.2f} (連続勝利: {self.winning_streak})")
+                else:
+                    # 損失の記録
+                    self.winning_streak = 0  # 連続勝利をリセット
+                    if symbol not in self.symbol_loss_history:
+                        self.symbol_loss_history[symbol] = []
+                    self.symbol_loss_history[symbol].append({
+                        "time": datetime.now(),
+                        "type": "loss",
+                        "amount": profit_loss_amount,
+                        "reason": reason
+                    })
+                
+                # 日次利益率の更新
+                self.daily_profit_percentage = ((self.current_capital - self.initial_capital) / self.initial_capital) * 100
             
             # 連続損失カウントは_check_stop_lossや_check_emergency_stop_lossで更新されるため、ここでは行わない
         else:

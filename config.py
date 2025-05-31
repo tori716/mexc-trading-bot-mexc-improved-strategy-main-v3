@@ -65,6 +65,22 @@ def load_config():
             {"time_minutes": 30, "loss_percentage": 1.2},
             {"time_minutes": 60, "loss_percentage": 1.5}
         ],
+        
+        # 新しいリスク管理パラメータ
+        "MINIMUM_HOLDING_TIME_MINUTES": int(os.getenv("MINIMUM_HOLDING_TIME_MINUTES", "5")),
+        "MINIMUM_TRADE_SIZE_USD": float(os.getenv("MINIMUM_TRADE_SIZE_USD", "10.0")),
+        "MINIMUM_LOSS_AMOUNT_USD": float(os.getenv("MINIMUM_LOSS_AMOUNT_USD", "0.50")),
+        "CONSECUTIVE_LOSS_THRESHOLD": int(os.getenv("CONSECUTIVE_LOSS_THRESHOLD", "3")),
+        
+        # 改善された資金管理パラメータ
+        "DYNAMIC_POSITION_SIZING_ENABLED": os.getenv("DYNAMIC_POSITION_SIZING_ENABLED", "True").lower() == "true",
+        "TIME_BASED_POSITION_SIZING": os.getenv("TIME_BASED_POSITION_SIZING", "True").lower() == "true",
+        "OPTIMIZED_HOURS_POSITION_SIZE": float(os.getenv("OPTIMIZED_HOURS_POSITION_SIZE", "6.0")),
+        "NON_OPTIMIZED_HOURS_POSITION_SIZE": float(os.getenv("NON_OPTIMIZED_HOURS_POSITION_SIZE", "4.0")),
+        "PYRAMIDING_ENABLED": os.getenv("PYRAMIDING_ENABLED", "True").lower() == "true",
+        "PYRAMIDING_THRESHOLD_PERCENTAGE": float(os.getenv("PYRAMIDING_THRESHOLD_PERCENTAGE", "2.0")),
+        "PYRAMIDING_SIZE_PERCENTAGE": float(os.getenv("PYRAMIDING_SIZE_PERCENTAGE", "3.0")),
+        "MAX_PORTFOLIO_RISK_PERCENTAGE": float(os.getenv("MAX_PORTFOLIO_RISK_PERCENTAGE", "25.0")),
 
         # 改善戦略パラメータ
         "SHORT_RSI_THRESHOLD_BEAR_MARKET": float(os.getenv("SHORT_RSI_THRESHOLD_BEAR_MARKET", "35")),
@@ -180,6 +196,15 @@ def load_config():
         "MIN_MARKET_THRESHOLD": float,
         "MAX_MARKET_THRESHOLD": float,
         "VOLATILITY_MULTIPLIER": float,
+        "MINIMUM_HOLDING_TIME_MINUTES": int,
+        "MINIMUM_TRADE_SIZE_USD": float,
+        "MINIMUM_LOSS_AMOUNT_USD": float,
+        "CONSECUTIVE_LOSS_THRESHOLD": int,
+        "OPTIMIZED_HOURS_POSITION_SIZE": float,
+        "NON_OPTIMIZED_HOURS_POSITION_SIZE": float,
+        "PYRAMIDING_THRESHOLD_PERCENTAGE": float,
+        "PYRAMIDING_SIZE_PERCENTAGE": float,
+        "MAX_PORTFOLIO_RISK_PERCENTAGE": float,
     }
 
     for var, type_func in numeric_vars.items():
