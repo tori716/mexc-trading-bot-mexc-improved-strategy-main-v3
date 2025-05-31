@@ -47,10 +47,14 @@ MAX_CONSECUTIVE_LOSSES = 3  # 連続損失の上限
 DEFAULT_POSITION_SIZE_PERCENTAGE = 5.0  # デフォルトポジションサイズ（%）
 POSITION_SIZE_REDUCTION_FACTOR = 0.5  # 連続損失時のポジションサイズ減少係数
 
-# 手数料率
-MEXC_TAKER_FEE_RATE = 0.001  # MEXCテイカー手数料（0.1%）
-MEXC_MAKER_FEE_RATE = 0.001  # MEXCメイカー手数料（0.1%）
-ROUND_TRIP_FEE_RATE = 0.002  # 往復手数料（0.2%）
+# 手数料率（MEXC実際の手数料体系に基づく）
+MEXC_TAKER_FEE_RATE = 0.0005  # MEXCテイカー手数料（0.05%）
+MEXC_MAKER_FEE_RATE = 0.0000  # MEXCメイカー手数料（0.00%）
+ROUND_TRIP_FEE_RATE = 0.001   # 往復手数料（最大0.1%: テイカー0.05% × 2）
+
+# 手数料計算用
+ENTRY_ORDER_TYPE = "LIMIT"    # エントリー注文タイプ（指値）
+EXIT_ORDER_TYPE = "MARKET"    # 決済注文タイプ（成行）
 
 # ============================================
 # テクニカル分析関連の定数

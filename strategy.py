@@ -6,6 +6,7 @@ import logging
 import pandas as pd
 import ta # Technical Analysis Library
 from datetime import datetime, time as dt_time
+import constants
 
 class TradingStrategy:
     """
@@ -42,6 +43,50 @@ class TradingStrategy:
         self.winning_streak = 0  # 連続勝利回数
         self.daily_profit_percentage = 0.0  # 日次利益率
         self.portfolio_risk_usage = 0.0  # 現在のポートフォリオリスク使用率
+
+    def _calculate_trading_fee(self, order_type: str, trade_amount: float, is_maker: bool = None) -> float:
+        """
+        Ultra-Think手数料計算: MEXCの実際の手数料体系に基づく正確な計算
+        
+        Args:
+            order_type (str): 注文タイプ ("LIMIT" or "MARKET")
+            trade_amount (float): 取引金額
+            is_maker (bool): 指値注文時のメイカー/テイカー判定（Noneの場合は保守的にテイカーと仮定）
+            
+        Returns:
+            float: 手数料金額
+        """
+        if order_type == "MARKET":
+            # 成行注文は常にテイカー
+            return trade_amount * constants.MEXC_TAKER_FEE_RATE
+        elif order_type == "LIMIT":
+            if is_maker is True:
+                # メイカーとして約定
+                return trade_amount * constants.MEXC_MAKER_FEE_RATE  # 0%
+            else:
+                # テイカーとして約定（保守的な見積もり）
+                return trade_amount * constants.MEXC_TAKER_FEE_RATE
+        else:
+            # 不明な注文タイプは保守的にテイカー手数料を適用
+            return trade_amount * constants.MEXC_TAKER_FEE_RATE
+    
+    def _estimate_round_trip_fee(self, trade_amount: float) -> float:
+        """
+        往復手数料の見積もり（エントリー＋決済）
+        
+        Args:
+            trade_amount (float): 取引金額
+            
+        Returns:
+            float: 往復手数料の見積もり
+        """
+        # エントリー: 指値注文（保守的にテイカーと仮定）
+        entry_fee = self._calculate_trading_fee("LIMIT", trade_amount, is_maker=False)
+        
+        # 決済: 成行注文（常にテイカー）
+        exit_fee = self._calculate_trading_fee("MARKET", trade_amount)
+        
+        return entry_fee + exit_fee
 
     def _initialize_coin_specific_params(self):
         """
@@ -310,9 +355,9 @@ class TradingStrategy:
             
             # 資金更新（テストモードの場合）
             if self.config["TEST_MODE"]:
-                # 手数料考慮
-                FEE_RATE = 0.001
-                transaction_fee = quantity * current_price * FEE_RATE
+                # Ultra-Think手数料計算: ピラミッディングは指値注文（保守的にテイカーと仮定）
+                trade_amount = quantity * current_price
+                transaction_fee = self._calculate_trading_fee("LIMIT", trade_amount, is_maker=False)
                 self.current_capital -= transaction_fee
         else:
             self.logger.error(f"ピラミッディング注文失敗: {symbol} {side}")
@@ -897,11 +942,9 @@ class TradingStrategy:
         side = position["side"]
         quantity = position["quantity"]
         
-        # 手数料考慮 (Maker/Taker共に0.1%と仮定)
-        # 往復で0.2%の手数料がかかるため、利益計算時に考慮
-        # MEXCのTaker手数料は0.1%なので、往復で0.2%
-        # 実際のMEXCの手数料体系に合わせて調整してください。
-        FEE_RATE = 0.001 # 0.1%
+        # Ultra-Think手数料計算: MEXCの実際の手数料体系を使用
+        # エントリー: LIMIT注文（メイカー0%またはテイカー0.05%）
+        # 決済: MARKET注文（テイカー0.05%）
 
         # 現在の利益率を計算 (手数料考慮前)
         if side == "BUY":
@@ -910,8 +953,10 @@ class TradingStrategy:
             profit_percentage = ((entry_price - current_price) / entry_price) * 100
 
         # 手数料を考慮した実質利益率
-        # 買いと売りの両方で手数料がかかるため、往復で2回分の手数料を引く
-        adjusted_profit_percentage = profit_percentage - (2 * FEE_RATE * 100)
+        trade_amount = quantity * entry_price
+        estimated_round_trip_fee = self._estimate_round_trip_fee(trade_amount)
+        fee_percentage = (estimated_round_trip_fee / trade_amount) * 100
+        adjusted_profit_percentage = profit_percentage - fee_percentage
 
         # 1段階目利益確定
         if adjusted_profit_percentage >= self.config["TAKE_PROFIT_PERCENTAGE_PHASE1"]:
@@ -933,7 +978,10 @@ class TradingStrategy:
                 # 資金を更新 (シミュレーションの場合)
                 if self.config["TEST_MODE"]:
                     profit_amount = half_quantity * (current_price - entry_price if side == "BUY" else entry_price - current_price)
-                    self.current_capital += profit_amount - (half_quantity * current_price * FEE_RATE) # 決済時の手数料も考慮
+                    # Ultra-Think手数料計算: 決済は成行注文（テイカー手数料）
+                    exit_trade_amount = half_quantity * current_price
+                    exit_fee = self._calculate_trading_fee("MARKET", exit_trade_amount)
+                    self.current_capital += profit_amount - exit_fee
                 return False # 残りポジションがあるのでFalseを返す
             else:
                 self.logger.error(f"{symbol} 1段階目利益確定失敗: {order_response}")
@@ -1014,9 +1062,9 @@ class TradingStrategy:
         """
         entry_price = position["entry_price"]
         side = position["side"]
+        quantity = position["quantity"]
         
-        # 手数料考慮 (往復で0.2%と仮定)
-        FEE_RATE = 0.001 # 0.1%
+        # Ultra-Think手数料計算: MEXCの実際の手数料体系を使用
 
         # 現在の損失率を計算 (手数料考慮前)
         if side == "BUY":
@@ -1025,7 +1073,10 @@ class TradingStrategy:
             loss_percentage = ((current_price - entry_price) / entry_price) * 100
         
         # 手数料を考慮した実質損失率
-        adjusted_loss_percentage = loss_percentage + (2 * FEE_RATE * 100) # 損失なので手数料分は加算
+        trade_amount = quantity * entry_price
+        estimated_round_trip_fee = self._estimate_round_trip_fee(trade_amount)
+        fee_percentage = (estimated_round_trip_fee / trade_amount) * 100
+        adjusted_loss_percentage = loss_percentage + fee_percentage # 損失なので手数料分は加算
 
         # 段階的損切りチェック（改善版）
         if self.config["PROGRESSIVE_STOP_LOSS_ENABLED"]:
@@ -1041,9 +1092,9 @@ class TradingStrategy:
             else:
                 actual_loss_amount = position["quantity"] * (current_price - entry_price)
             
-            # 手数料を考慮
-            FEE_RATE = 0.001
-            transaction_fee = position["quantity"] * current_price * FEE_RATE
+            # Ultra-Think手数料計算: 決済は成行注文（テイカー手数料）
+            exit_trade_amount = position["quantity"] * current_price
+            transaction_fee = self._calculate_trading_fee("MARKET", exit_trade_amount)
             actual_loss_amount += transaction_fee
             
             # 最小損失額以上かつ段階的条件を満たす場合のみ損切り
@@ -1068,9 +1119,9 @@ class TradingStrategy:
                 else:
                     actual_loss_amount = position["quantity"] * (current_price - entry_price)
                 
-                # 手数料を考慮
-                FEE_RATE = 0.001
-                transaction_fee = position["quantity"] * current_price * FEE_RATE
+                # Ultra-Think手数料計算: 決済は成行注文（テイカー手数料）
+                exit_trade_amount = position["quantity"] * current_price
+                transaction_fee = self._calculate_trading_fee("MARKET", exit_trade_amount)
                 actual_loss_amount += transaction_fee
                 
                 if (adjusted_loss_percentage >= self.config["FIXED_STOP_LOSS_PERCENTAGE"] and 
@@ -1093,9 +1144,9 @@ class TradingStrategy:
             else:
                 actual_loss_amount = position["quantity"] * (current_price - entry_price)
             
-            # 手数料を考慮
-            FEE_RATE = 0.001
-            transaction_fee = position["quantity"] * current_price * FEE_RATE
+            # Ultra-Think手数料計算: 決済は成行注文（テイカー手数料）
+            exit_trade_amount = position["quantity"] * current_price
+            transaction_fee = self._calculate_trading_fee("MARKET", exit_trade_amount)
             actual_loss_amount += transaction_fee
             
             if actual_loss_amount >= self.config["MINIMUM_LOSS_AMOUNT_USD"]:
@@ -1140,9 +1191,9 @@ class TradingStrategy:
                         else:
                             actual_loss_amount = position["quantity"] * (current_price - entry_price)
                         
-                        # 手数料を考慮
-                        FEE_RATE = 0.001
-                        transaction_fee = position["quantity"] * current_price * FEE_RATE
+                        # Ultra-Think手数料計算: 決済は成行注文（テイカー手数料）
+                        exit_trade_amount = position["quantity"] * current_price
+                        transaction_fee = self._calculate_trading_fee("MARKET", exit_trade_amount)
                         actual_loss_amount += transaction_fee
                         
                         self.logger.info(f"{symbol} テクニカル損切りシグナル発生 (MACD逆転, 損失額: ${actual_loss_amount:.2f})")
@@ -1193,9 +1244,9 @@ class TradingStrategy:
                         else:
                             actual_loss_amount = position["quantity"] * (current_price - entry_price)
                         
-                        # 手数料を考慮
-                        FEE_RATE = 0.001
-                        transaction_fee = position["quantity"] * current_price * FEE_RATE
+                        # Ultra-Think手数料計算: 決済は成行注文（テイカー手数料）
+                        exit_trade_amount = position["quantity"] * current_price
+                        transaction_fee = self._calculate_trading_fee("MARKET", exit_trade_amount)
                         actual_loss_amount += transaction_fee
                         
                         self.logger.info(f"{symbol} 改善されたテクニカル損切りシグナル発生 (BBミドルラインブレイク: {price_deviation:.2f}%, 損失額: ${actual_loss_amount:.2f})")
@@ -1231,9 +1282,9 @@ class TradingStrategy:
                             entry_price = position["entry_price"]
                             actual_loss_amount = position["quantity"] * (entry_price - current_price)
                             
-                            # 手数料を考慮
-                            FEE_RATE = 0.001
-                            transaction_fee = position["quantity"] * current_price * FEE_RATE
+                            # Ultra-Think手数料計算: 緊急決済は成行注文（テイカー手数料）
+                            exit_trade_amount = position["quantity"] * current_price
+                            transaction_fee = self._calculate_trading_fee("MARKET", exit_trade_amount)
                             actual_loss_amount += transaction_fee
                             
                             await self._close_position(symbol, position, current_price, "EMERGENCY_STOP_LOSS_BTC_CRASH")
@@ -1269,9 +1320,9 @@ class TradingStrategy:
             # 資金を更新 (シミュレーションの場合)
             if self.config["TEST_MODE"]:
                 profit_loss_amount = quantity * (exit_price - entry_price if side == "BUY" else entry_price - exit_price)
-                # 手数料考慮 (往復で0.2%)
-                FEE_RATE = 0.001 # 0.1%
-                transaction_fee = quantity * exit_price * FEE_RATE # 決済時の手数料
+                # Ultra-Think手数料計算: 決済は成行注文（テイカー手数料）
+                exit_trade_amount = quantity * exit_price
+                transaction_fee = self._calculate_trading_fee("MARKET", exit_trade_amount)
                 profit_loss_amount -= transaction_fee
                 
                 self.current_capital += profit_loss_amount
@@ -1358,9 +1409,10 @@ class TradingStrategy:
                 ((t["entry_price"] - t["exit_price"]) / t["entry_price"] * 100)
                 for t in winning_trades
             )
-            # 手数料考慮 (往復0.2%)
-            FEE_RATE = 0.001
-            avg_profit_percentage = (total_profit_percentage / len(winning_trades)) - (2 * FEE_RATE * 100)
+            # Ultra-Think手数料計算: 実際の往復手数料を考慮
+            # 保守的見積もりとして、往復でテイカー手数料を適用
+            round_trip_fee_percentage = constants.MEXC_TAKER_FEE_RATE * 2 * 100  # 0.1%
+            avg_profit_percentage = (total_profit_percentage / len(winning_trades)) - round_trip_fee_percentage
 
         avg_loss_percentage = 0.0
         if losing_trades:
@@ -1369,8 +1421,10 @@ class TradingStrategy:
                 ((t["exit_price"] - t["entry_price"]) / t["entry_price"] * 100)
                 for t in losing_trades
             )
-            # 手数料考慮 (往復0.2%)
-            avg_loss_percentage = (total_loss_percentage / len(losing_trades)) + (2 * FEE_RATE * 100) # 損失なので加算
+            # Ultra-Think手数料計算: 実際の往復手数料を考慮  
+            # 保守的見積もりとして、往復でテイカー手数料を適用
+            round_trip_fee_percentage = constants.MEXC_TAKER_FEE_RATE * 2 * 100  # 0.1%
+            avg_loss_percentage = (total_loss_percentage / len(losing_trades)) + round_trip_fee_percentage # 損失なので加算
 
         # 最大ドローダウンの計算 (簡略版)
         peak_capital = self.initial_capital
