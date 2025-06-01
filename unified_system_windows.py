@@ -855,7 +855,7 @@ class AnnualBacktestSystem:
             "MAX_SIMULTANEOUS_POSITIONS": 5,  # 35%運用のため同時ポジション数増加
             
             # 強化された出口戦略（最適化済み）
-            "TAKE_PROFIT_LEVELS": [2.4, 5.0, 8.0],  # 仕様書通り段階的利確
+            "TAKE_PROFIT_LEVELS": [3.0, 6.0, 10.0],  # 戦略1: 大幅利確で月刉65%を狙う
             "TAKE_PROFIT_QUANTITIES": [0.3, 0.4, 0.3],
             "STOP_LOSS_INITIAL": 1.5,  # 2.0→1.5 ドローダウン削減
             "TRAILING_STOP_ACTIVATION": 1.0,
@@ -981,7 +981,7 @@ class AnnualBacktestSystem:
                         if symbol not in self.positions:
                             entry_signal = await self._analyze_enhanced_entry_conditions(symbol, timestamp)
                             
-                            if entry_signal and entry_signal.confidence >= 0.70:  # バランス調整：品質と頻度の両立
+                            if entry_signal and entry_signal.confidence >= 0.80:  # 戦略1: 高精度エントリー
                                 # 最適化されたポジションサイズ
                                 position_size = self._calculate_optimal_position_size(
                                     capital, symbol, entry_signal.confidence
@@ -1140,13 +1140,13 @@ class AnnualBacktestSystem:
             current_price > bb_upper * 0.98,
             last_macd > last_macd_signal,
             last_ema20 > last_ema50,
-            abs(price_change_1h) > 0.3,
+            abs(price_change_1h) > 2.0,  # 戦略1: 30分価格変動2.0%以上必須
             volume_ratio > 1.3
         ]
         
         long_score = sum(long_conditions) / len(long_conditions)
         
-        if long_score >= 0.65:  # バランス調整：品質と頻度の両立
+        if long_score >= 0.75:  # 戦略1: ブレイクアウト精度重視
             reasons = []
             if long_conditions[0]: reasons.append(f"RSI強気({last_rsi:.1f})")
             if long_conditions[1]: reasons.append("BB上限近接")
@@ -1171,13 +1171,13 @@ class AnnualBacktestSystem:
             current_price < bb_lower * 1.02,
             last_macd < last_macd_signal,
             last_ema20 < last_ema50,
-            abs(price_change_1h) > 0.3,
+            abs(price_change_1h) > 2.0,  # 戦略1: 30分価格変動2.0%以上必須
             volume_ratio > 1.3
         ]
         
         short_score = sum(short_conditions) / len(short_conditions)
         
-        if short_score >= 0.65:  # バランス調整：品質と頻度の両立
+        if short_score >= 0.75:  # 戦略1: ブレイクアウト精度重視
             reasons = []
             if short_conditions[0]: reasons.append(f"RSI弱気({last_rsi:.1f})")
             if short_conditions[1]: reasons.append("BB下限近接")
