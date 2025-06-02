@@ -1,0 +1,107 @@
+{
+  "backtest_period": {
+    "start": "2024-06-01T20:02:05.633223",
+    "end": "2025-06-01T20:02:05.633223",
+    "duration_days": 365
+  },
+  "performance_metrics": {
+    "total_trades": 374,
+    "winning_trades": 174,
+    "win_rate": 46.524064171122994,
+    "total_return": -4.772599923250639,
+    "max_drawdown": 300.4023377865262,
+    "profit_factor": 0.738808593955977,
+    "avg_win": 7.758519159358801,
+    "avg_loss": 9.136211630267475,
+    "sharpe_ratio": -1.735996216840296
+  },
+  "risk_metrics": {
+    "var_95_pct": -2.1244803131469046,
+    "var_99_pct": -4.501182725434078,
+    "cvar_95_pct": -3.312831519290491,
+    "cvar_99_pct": -4.501182725434078,
+    "annual_volatility_pct": 28.32182052704304,
+    "max_drawdown_pct": 10.261916284163629
+  },
+  "monthly_analysis": [
+    {
+      "month": "2025-05",
+      "trades": 374,
+      "return_pct": -117.21,
+      "win_rate_pct": 46.5,
+      "wins": 174,
+      "losses": 200,
+      "sharpe": -0.38,
+      "best_trade": 6.802541026998411,
+      "worst_trade": -6.620209059233454
+    }
+  ],
+  "optimization_strategy": {
+    "overall_assessment": "改善が必要 - 戦略の大幅見直し推奨",
+    "priority_improvements": [
+      "最大ドローダウン15%超 - 緊急リスク管理強化必要",
+      "勝率50%未満 - エントリー精度向上が急務",
+      "プロフィットファクター低下 - 利確/損切り比率要調整"
+    ],
+    "risk_management_enhancements": [],
+    "exit_strategy_optimizations": [
+      "損切り強化: 現在の2%から1.5%への変更検討"
+    ],
+    "entry_strategy_refinements": [
+      "エントリー条件厳格化: 信頼度閾値を70%から80%に上昇"
+    ],
+    "recommended_parameter_adjustments": {
+      "entry_confidence_threshold": {
+        "current": 0.7,
+        "recommended": 0.8,
+        "reason": "勝率向上"
+      },
+      "stop_loss": {
+        "current": 2.0,
+        "recommended": 1.5,
+        "reason": "ドローダウン削減"
+      },
+      "position_size_pct": {
+        "current": 8.0,
+        "recommended": 6.0,
+        "reason": "リスク削減"
+      },
+      "take_profit_1": {
+        "current": 1.5,
+        "recommended": 2.0,
+        "reason": "プロフィットファクター向上"
+      }
+    }
+  },
+  "trade_summary": {
+    "total_trades": 374,
+    "symbols_traded": [
+      "AVAXUSDT",
+      "AAVEUSDT",
+      "ONEUSDT",
+      "GALAUSDT",
+      "FILUSDT",
+      "DOGEUSDT",
+      "LTCUSDT",
+      "MANAUSDT",
+      "SANDUSDT",
+      "APEUSDT",
+      "VETUSDT",
+      "EGLDUSDT",
+      "ARBUSDT",
+      "GRTUSDT",
+      "LINKUSDT",
+      "SHIBUSDT",
+      "NEARUSDT",
+      "ATOMUSDT",
+      "UNIUSDT",
+      "ADAUSDT",
+      "DOTUSDT",
+      "ALGOUSDT",
+      "ICPUSDT"
+    ],
+    "best_performing_symbol": "GRTUSDT",
+    "worst_performing_symbol": "AAVEUSDT",
+    "average_hold_time_hours": 10.18716577540107
+  }
+}

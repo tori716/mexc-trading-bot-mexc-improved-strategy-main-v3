@@ -1,0 +1,95 @@
+{
+  "backtest_period": {
+    "start": "2024-06-01T21:27:43.518144",
+    "end": "2025-06-01T21:27:43.518144",
+    "duration_days": 365
+  },
+  "performance_metrics": {
+    "total_trades": 231,
+    "winning_trades": 125,
+    "win_rate": 54.112554112554115,
+    "total_return": 3.373980315896198,
+    "max_drawdown": 114.19117618085485,
+    "profit_factor": 1.3022782334853604,
+    "avg_win": 11.628653707379772,
+    "avg_loss": 10.530034734272185,
+    "sharpe_ratio": 2.3369590345121845
+  },
+  "risk_metrics": {
+    "var_95_pct": -1.0476055022475907,
+    "var_99_pct": -4.091506995333463,
+    "cvar_95_pct": -2.569556248790527,
+    "cvar_99_pct": -4.091506995333463,
+    "annual_volatility_pct": 23.469761961750805,
+    "max_drawdown_pct": 4.3615103339936585
+  },
+  "monthly_analysis": [
+    {
+      "month": "2025-05",
+      "trades": 231,
+      "return_pct": 107.41,
+      "win_rate_pct": 54.1,
+      "wins": 125,
+      "losses": 106,
+      "sharpe": 0.51,
+      "best_trade": 8.286577470867492,
+      "worst_trade": -7.760901100776516
+    }
+  ],
+  "optimization_strategy": {
+    "overall_assessment": "改善が必要 - 戦略の大幅見直し推奨",
+    "priority_improvements": [
+      "最大ドローダウン15%超 - 緊急リスク管理強化必要"
+    ],
+    "risk_management_enhancements": [],
+    "exit_strategy_optimizations": [
+      "損切り強化: 現在の2%から1.5%への変更検討"
+    ],
+    "entry_strategy_refinements": [
+      "エントリー条件厳格化: 信頼度閾値を70%から80%に上昇"
+    ],
+    "recommended_parameter_adjustments": {
+      "stop_loss": {
+        "current": 2.0,
+        "recommended": 1.5,
+        "reason": "ドローダウン削減"
+      },
+      "position_size_pct": {
+        "current": 8.0,
+        "recommended": 6.0,
+        "reason": "リスク削減"
+      }
+    }
+  },
+  "trade_summary": {
+    "total_trades": 231,
+    "symbols_traded": [
+      "ADAUSDT",
+      "ATOMUSDT",
+      "AVAXUSDT",
+      "LINKUSDT",
+      "ALGOUSDT",
+      "LTCUSDT",
+      "FILUSDT",
+      "ICPUSDT",
+      "ONEUSDT",
+      "SANDUSDT",
+      "NEARUSDT",
+      "ARBUSDT",
+      "VETUSDT",
+      "DOGEUSDT",
+      "SHIBUSDT",
+      "UNIUSDT",
+      "APEUSDT",
+      "DOTUSDT",
+      "GRTUSDT",
+      "EGLDUSDT",
+      "AAVEUSDT",
+      "MANAUSDT",
+      "GALAUSDT"
+    ],
+    "best_performing_symbol": "UNIUSDT",
+    "worst_performing_symbol": "AAVEUSDT",
+    "average_hold_time_hours": 10.727272727272727
+  }
+}

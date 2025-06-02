@@ -1,0 +1,101 @@
+{
+  "backtest_period": {
+    "start": "2024-06-01T15:21:45.628429",
+    "end": "2025-06-01T15:21:45.628429",
+    "duration_days": 365
+  },
+  "performance_metrics": {
+    "total_trades": 375,
+    "winning_trades": 191,
+    "win_rate": 50.93333333333333,
+    "total_return": -0.5183338300068228,
+    "max_drawdown": 151.84211215427754,
+    "profit_factor": 0.9701396522281345,
+    "avg_win": 8.816893233171344,
+    "avg_loss": 9.434021687697888,
+    "sharpe_ratio": 0.26822390792248385
+  },
+  "risk_metrics": {
+    "var_95_pct": -1.5302361264431128,
+    "var_99_pct": -2.703064792637358,
+    "cvar_95_pct": -2.1166504595402356,
+    "cvar_99_pct": -2.703064792637358,
+    "annual_volatility_pct": 20.727019052305835,
+    "max_drawdown_pct": 4.464524961162024
+  },
+  "monthly_analysis": [
+    {
+      "month": "2025-05",
+      "trades": 375,
+      "return_pct": 18.22,
+      "win_rate_pct": 50.9,
+      "wins": 191,
+      "losses": 184,
+      "sharpe": 0.06,
+      "best_trade": 6.112676056338028,
+      "worst_trade": -7.760901100776516
+    }
+  ],
+  "optimization_strategy": {
+    "overall_assessment": "改善が必要 - 戦略の大幅見直し推奨",
+    "priority_improvements": [
+      "最大ドローダウン15%超 - 緊急リスク管理強化必要",
+      "プロフィットファクター低下 - 利確/損切り比率要調整"
+    ],
+    "risk_management_enhancements": [],
+    "exit_strategy_optimizations": [
+      "損切り強化: 現在の2%から1.5%への変更検討"
+    ],
+    "entry_strategy_refinements": [
+      "エントリー条件厳格化: 信頼度閾値を70%から80%に上昇"
+    ],
+    "recommended_parameter_adjustments": {
+      "stop_loss": {
+        "current": 2.0,
+        "recommended": 1.5,
+        "reason": "ドローダウン削減"
+      },
+      "position_size_pct": {
+        "current": 8.0,
+        "recommended": 6.0,
+        "reason": "リスク削減"
+      },
+      "take_profit_1": {
+        "current": 1.5,
+        "recommended": 2.0,
+        "reason": "プロフィットファクター向上"
+      }
+    }
+  },
+  "trade_summary": {
+    "total_trades": 375,
+    "symbols_traded": [
+      "SHIBUSDT",
+      "EGLDUSDT",
+      "ONEUSDT",
+      "ALGOUSDT",
+      "GRTUSDT",
+      "ARBUSDT",
+      "AVAXUSDT",
+      "SANDUSDT",
+      "AAVEUSDT",
+      "APEUSDT",
+      "LINKUSDT",
+      "MANAUSDT",
+      "ATOMUSDT",
+      "NEARUSDT",
+      "VETUSDT",
+      "DOGEUSDT",
+      "FILUSDT",
+      "ICPUSDT",
+      "ADAUSDT",
+      "GALAUSDT",
+      "LTCUSDT",
+      "UNIUSDT",
+      "DOTUSDT"
+    ],
+    "best_performing_symbol": "APEUSDT",
+    "worst_performing_symbol": "DOTUSDT",
+    "average_hold_time_hours": 10.064
+  }
+}

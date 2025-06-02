@@ -1,0 +1,58 @@
+{
+  "backtest_period": {
+    "start": "2024-06-02T01:55:08.015485",
+    "end": "2025-06-02T01:55:08.015485",
+    "duration_days": 365
+  },
+  "performance_metrics": {
+    "total_trades": 0,
+    "winning_trades": 0,
+    "win_rate": 0,
+    "total_return": 0,
+    "max_drawdown": 0,
+    "profit_factor": 0,
+    "avg_win": 0,
+    "avg_loss": 0,
+    "sharpe_ratio": 0
+  },
+  "risk_metrics": {
+    "var_95_pct": 0.0,
+    "var_99_pct": 0.0,
+    "cvar_95_pct": 0.0,
+    "cvar_99_pct": 0.0,
+    "annual_volatility_pct": 0.0,
+    "max_drawdown_pct": 0
+  },
+  "monthly_analysis": [],
+  "optimization_strategy": {
+    "overall_assessment": "改善が必要 - 戦略の大幅見直し推奨",
+    "priority_improvements": [
+      "勝率50%未満 - エントリー精度向上が急務",
+      "プロフィットファクター低下 - 利確/損切り比率要調整"
+    ],
+    "risk_management_enhancements": [],
+    "exit_strategy_optimizations": [],
+    "entry_strategy_refinements": [
+      "エントリー条件厳格化: 信頼度閾値を70%から80%に上昇"
+    ],
+    "recommended_parameter_adjustments": {
+      "entry_confidence_threshold": {
+        "current": 0.7,
+        "recommended": 0.8,
+        "reason": "勝率向上"
+      },
+      "take_profit_1": {
+        "current": 1.5,
+        "recommended": 2.0,
+        "reason": "プロフィットファクター向上"
+      }
+    }
+  },
+  "trade_summary": {
+    "total_trades": 0,
+    "symbols_traded": [],
+    "best_performing_symbol": "",
+    "worst_performing_symbol": "",
+    "average_hold_time_hours": 0
+  }
+}

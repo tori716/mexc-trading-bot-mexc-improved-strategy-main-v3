@@ -1,0 +1,77 @@
+{
+  "backtest_period": {
+    "start": "2024-06-02T02:07:46.686530",
+    "end": "2025-06-02T02:07:46.686530",
+    "duration_days": 365
+  },
+  "performance_metrics": {
+    "total_trades": 13,
+    "winning_trades": 13,
+    "win_rate": 100.0,
+    "total_return": 5.675041984691802,
+    "max_drawdown": 0,
+    "profit_factor": 0,
+    "avg_win": 43.654169113013864,
+    "avg_loss": 0,
+    "sharpe_ratio": 72.99747445847215
+  },
+  "risk_metrics": {
+    "var_95_pct": -24.203076726104186,
+    "var_99_pct": -27.60995502557664,
+    "cvar_95_pct": -25.906515875840412,
+    "cvar_99_pct": -27.60995502557664,
+    "annual_volatility_pct": 251.64083670648844,
+    "max_drawdown_pct": 35.4559903320883
+  },
+  "monthly_analysis": [
+    {
+      "month": "2025-05",
+      "trades": 13,
+      "return_pct": 70.35,
+      "win_rate_pct": 100.0,
+      "wins": 13,
+      "losses": 0,
+      "sharpe": 15.93,
+      "best_trade": 8.040050745015114,
+      "worst_trade": 0
+    }
+  ],
+  "optimization_strategy": {
+    "overall_assessment": "標準的パフォーマンス - 戦略改善が必要",
+    "priority_improvements": [
+      "プロフィットファクター低下 - 利確/損切り比率要調整"
+    ],
+    "risk_management_enhancements": [
+      "ドローダウン制御: ポジションサイズ縮小推奨",
+      "ボラティリティ高: 動的ポジションサイジング導入"
+    ],
+    "exit_strategy_optimizations": [
+      "保有時間短縮: 12時間から8時間への変更検討"
+    ],
+    "entry_strategy_refinements": [],
+    "recommended_parameter_adjustments": {
+      "take_profit_1": {
+        "current": 1.5,
+        "recommended": 2.0,
+        "reason": "プロフィットファクター向上"
+      }
+    }
+  },
+  "trade_summary": {
+    "total_trades": 13,
+    "symbols_traded": [
+      "AAVEUSDT",
+      "MANAUSDT",
+      "GALAUSDT",
+      "AVAXUSDT",
+      "UNIUSDT",
+      "LTCUSDT",
+      "NEARUSDT",
+      "GRTUSDT",
+      "LINKUSDT"
+    ],
+    "best_performing_symbol": "UNIUSDT",
+    "worst_performing_symbol": "GALAUSDT",
+    "average_hold_time_hours": 73.84615384615384
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "backtest_period": {
+    "start": "2024-06-02T01:24:18.360302",
+    "end": "2025-06-02T01:24:18.360302",
+    "duration_days": 365
+  },
+  "performance_metrics": {
+    "total_trades": 505,
+    "winning_trades": 249,
+    "win_rate": 49.306930693069305,
+    "total_return": -0.15155485315245448,
+    "max_drawdown": 37.76554800043507,
+    "profit_factor": 0.9333645441165139,
+    "avg_win": 0.8525432632120894,
+    "avg_loss": 0.9061305093826921,
+    "sharpe_ratio": -0.39790682108219355
+  },
+  "risk_metrics": {
+    "var_95_pct": -8.404826365848773,
+    "var_99_pct": -8.404826365848773,
+    "cvar_95_pct": -8.404826365848773,
+    "cvar_99_pct": -8.404826365848773,
+    "annual_volatility_pct": 44.638285795052525,
+    "max_drawdown_pct": 20.959145292012497
+  },
+  "monthly_analysis": [
+    {
+      "month": "2025-05",
+      "trades": 488,
+      "return_pct": -13.26,
+      "win_rate_pct": 49.4,
+      "wins": 241,
+      "losses": 247,
+      "sharpe": -0.08,
+      "best_trade": 5.493863237872581,
+      "worst_trade": -5.277995301487855
+    },
+    {
+      "month": "2025-06",
+      "trades": 17,
+      "return_pct": -1.89,
+      "win_rate_pct": 47.1,
+      "wins": 8,
+      "losses": 9,
+      "sharpe": -0.53,
+      "best_trade": 0.9580650227736758,
+      "worst_trade": -1.6447368421052482
+    }
+  ],
+  "optimization_strategy": {
+    "overall_assessment": "改善が必要 - 戦略の大幅見直し推奨",
+    "priority_improvements": [
+      "最大ドローダウン15%超 - 緊急リスク管理強化必要",
+      "勝率50%未満 - エントリー精度向上が急務",
+      "プロフィットファクター低下 - 利確/損切り比率要調整"
+    ],
+    "risk_management_enhancements": [
+      "ドローダウン制御: ポジションサイズ縮小推奨",
+      "ボラティリティ高: 動的ポジションサイジング導入"
+    ],
+    "exit_strategy_optimizations": [
+      "損切り強化: 現在の2%から1.5%への変更検討"
+    ],
+    "entry_strategy_refinements": [
+      "エントリー条件厳格化: 信頼度閾値を70%から80%に上昇"
+    ],
+    "recommended_parameter_adjustments": {
+      "entry_confidence_threshold": {
+        "current": 0.7,
+        "recommended": 0.8,
+        "reason": "勝率向上"
+      },
+      "stop_loss": {
+        "current": 2.0,
+        "recommended": 1.5,
+        "reason": "ドローダウン削減"
+      },
+      "position_size_pct": {
+        "current": 8.0,
+        "recommended": 6.0,
+        "reason": "リスク削減"
+      },
+      "take_profit_1": {
+        "current": 1.5,
+        "recommended": 2.0,
+        "reason": "プロフィットファクター向上"
+      }
+    }
+  },
+  "trade_summary": {
+    "total_trades": 505,
+    "symbols_traded": [
+      "ONEUSDT",
+      "DOTUSDT",
+      "GRTUSDT",
+      "GALAUSDT",
+      "ADAUSDT",
+      "NEARUSDT",
+      "ARBUSDT",
+      "ALGOUSDT",
+      "SANDUSDT",
+      "DOGEUSDT",
+      "FILUSDT",
+      "SHIBUSDT",
+      "LINKUSDT",
+      "MANAUSDT",
+      "UNIUSDT",
+      "AVAXUSDT",
+      "VETUSDT",
+      "ATOMUSDT",
+      "APEUSDT"
+    ],
+    "best_performing_symbol": "GRTUSDT",
+    "worst_performing_symbol": "GALAUSDT",
+    "average_hold_time_hours": 1.0
+  }
+}
